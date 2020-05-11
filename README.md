@@ -283,3 +283,5 @@ a9d13c0d5328506b7f1e9d42af6e921e12c08e0eb2707d03ba6c7a26af655894
 • docker stop reddit && docker rm reddit
 • docker run --name reddit --rm -it <your-login>/otus-reddit:1.0 bash
 • ls /
+
+docker build --no-cache на случай RUN apt-get -y update
