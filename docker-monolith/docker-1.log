@@ -13,5 +13,5 @@ hello-world                  latest              bf756fb1ae65        4 months ag
 mysql/mysql-server           8.0.15              18c55bf778f5        15 months ago       288MB
 
 
-image - шаблон контейнера
-container - развёрнутое пространство из шаблона с доступным для записи слоем.
+image - шаблон ОСи для контейнера
+container - развёрнутая ОС из шаблона с доступным для записи слоем.
