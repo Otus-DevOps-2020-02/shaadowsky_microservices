@@ -1,0 +1,17 @@
+REPOSITORY                   TAG                 IMAGE ID            CREATED             SIZE
+shaadowsky/ubuntu-tmp-file   latest              e4ee869d8d0e        52 seconds ago      13.3kB
+andrey874/my_nginx           latest              a17a4fd93a5f        4 days ago          8.6MB
+mysql/mysql-server           latest              85bcef95716d        11 days ago         288MB
+innodb_mysql_cluster_node2   latest              615f75775890        11 days ago         288MB
+innodb_mysql_cluster_node1   latest              f4c75c1886fe        11 days ago         288MB
+mysql/mysql-router           latest              73b5c035425a        2 weeks ago         399MB
+dbudakov/lesson              lesson_nginx        b25584011b6e        2 weeks ago         8.6MB
+alpine                       latest              f70734b6a266        2 weeks ago         5.61MB
+looklikethatguy/nginxphp     v1                  d8458e321921        2 weeks ago         14MB
+looklikethatguy/phpfm        v1                  f9d25e70ab57        2 weeks ago         20.8MB
+hello-world                  latest              bf756fb1ae65        4 months ago        13.3kB
+mysql/mysql-server           8.0.15              18c55bf778f5        15 months ago       288MB
+
+
+image - шаблон контейнера
+container - развёрнутое пространство из шаблона с доступным для записи слоем.
