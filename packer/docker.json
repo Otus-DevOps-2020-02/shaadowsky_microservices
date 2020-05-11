@@ -1,0 +1,42 @@
+{
+  "variables": {
+    "project_id": null,
+    "zone": null,
+    "machine_type": null,
+    "source_image_family": null,
+    "image_description": null,
+    "ssh_username": null,
+    "disk_size": null,
+    "disk_type": null,
+    "network": null,
+    "tags": null
+    },
+
+  "builders": [
+    {
+      "type": "googlecompute",
+      "project_id": "{{user `project_id`}}",
+      "image_name": "reddit-docker-base-{{timestamp}}",
+      "image_family": "reddit-docker-base",
+      "source_image_family": "{{user `source_image_family`}}",
+      "zone": "{{user `zone`}}",
+      "ssh_username": "{{user `ssh_username`}}",
+      "machine_type": "{{user `machine_type`}}",
+      "image_description": "{{user `image_description`}}",
+      "disk_size": "{{user `disk_size`}}",
+      "disk_type": "{{user `disk_type`}}",
+      "network": "{{user `network`}}",
+      "tags": "{{user `tags`}}"
+
+    }
+  ],
+
+  "provisioners": [
+    {
+      "type": "shell",
+      "script": "scripts/inst_docker.sh",
+      "execute_command": "sudo {{.Path}}"
+    }
+  ]
+}
+
