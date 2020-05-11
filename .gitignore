@@ -1,0 +1,11 @@
+.github/
+packer/variables.json
+*.tfstate
+*.tfstate.*.backup
+*.tfstate.backup
+*.tfvars
+.terraform/
+.vscode
+*.retry
+jdauphant.nginx
+vault.key

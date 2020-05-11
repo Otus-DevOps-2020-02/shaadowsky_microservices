@@ -3,56 +3,50 @@ shaadowsky microservices repository
 
 устанавливаем [docker](https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/)
 
- docker -v
+```bash
+$ docker -v
 Docker version 19.03.8, build afacb8b7f0
+```
 
-docker run -i = docker create + docker start +
-docker attach
+docker run -i = docker create + docker start + docker attach
+
 docker run = docker create + docker start 
 
-• docker create используется, когда не нужно
-стартовать контейнер сразу
-• в большинстве случаев используется docker run
+_docker create_ используется, когда не нужно стартовать контейнер сразу, в большинстве случаев используется _docker run_
 
-Через параметры передаются лимиты(cpu/mem/disk), ip,
-volumes
+Через параметры передаются лимиты(cpu/mem/disk), ip, volumes:
 • -i – запускает контейнер в foreground режиме (docker attach)
 • -d – запускает контейнер в background режиме
 • -t создает TTY
-• docker run -it ubuntu:16.04 bash
-• docker run -dt nginx:latest
 
-Docker exec
+_docker exec_:
 • Запускает новый процесс внутри контейнера
-• Например, bash внутри контейнера с
-приложением
+• Например, bash внутри контейнера с приложением
 
-docker exec -it <u_container_id> bash 
+_docker exec -it <u_container_id> bash_ 
 
-Docker commit
+_Docker commit_:
 • Создает image из контейнера
 • Контейнер при этом остается запущенным
 
- docker commit <u_container_id> yourname/ubuntu-tmp-file
+ _docker commit <u_container_id> yourname/ubuntu-tmp-file_
 
- Docker kill & stop
+Docker kill & stop:
 • kill сразу посылает SIGKILL
-• stop посылает SIGTERM, и через 10
-секунд(настраивается) посылает SIGKILL
+• stop посылает SIGTERM, и через 10 секунд(настраивается) посылает SIGKILL
 • SIGTERM - сигнал остановки приложения
 • SIGKILL - безусловное завершение процесса
 
-Docker kill
->docker ps -q
+```bash
+$ docker\ ps -q
 8d0234c50f77
->docker kill $(docker ps -q)
+$ docker kill $(docker ps -q)
 8d0234c50f77
+```
 
-docker system df
-• Отображает сколько дискового пространства
-занято образами, контейнерами и volume’ами
-• Отображает сколько из них не используется и
-возможно удалить
+_docker system df_
+• Отображает сколько дискового пространства занято образами, контейнерами и volume’ами
+• Отображает сколько из них не используется и возможно удалить
 
 ```bash
 $  docker system df
@@ -64,14 +58,13 @@ Build Cache         0                   0                   0B                  
 ```
 
 Docker rm & rmi
-• rm удаляет контейнер, можно добавить флаг -f,
-чтобы удалялся работающий container(будет
-послан sigkill)
-• rmi удаляет image, если от него не зависят
-запущенные контейнеры
+• rm удаляет контейнер, можно добавить флаг -f, чтобы удалялся работающий container(будет послан sigkill)
+• rmi удаляет image, если от него не зависят запущенные контейнеры
 
-> docker rm $(docker ps -a -q) # удалит все незапущенные контейнеры
->docker rmi $(docker images -q) # удалит все образа
+```bash
+$ docker rm $(docker ps -a -q) # удалит все незапущенные контейнеры
+$ docker rmi $(docker images -q) # удалит все образа
+```
 
 создаем проект в gce, у меня это docker-276907
 
@@ -97,16 +90,10 @@ $ docker-machine version
 docker-machine version 0.16.0, build 702c267f
 ```
 
-• docker-machine - встроенный в докер инструмент для создания хостов и установки на
-них docker engine. Имеет поддержку облаков и систем виртуализации (Virtualbox, GCP и
-др.)
-• Команда создания - docker-machine create <имя>. Имен может быть много, переключение
-между ними через eval $(docker-machine env <имя>). Переключение на локальный докер
-- eval $(docker-machine env --unset). Удаление - docker-machine rm <имя>.
-• docker-machine создает хост для докер демона со указываемым образом в --googlemachine-image, в ДЗ используется ubuntu-16.04. Образы которые используются для
-построения докер контейнеров к этому никак не относятся.
-• Все докер команды, которые запускаются в той же консоли после eval $(docker-machine
-env <имя>) работают с удаленным докер демоном в GCP.
+• docker-machine - встроенный в докер инструмент для создания хостов и установки на них docker engine. Имеет поддержку облаков и систем виртуализации (Virtualbox, GCP и др.)
+• Команда создания - docker-machine create <имя>. Имен может быть много, переключение между ними через eval $(docker-machine env <имя>). Переключение на локальный докер - _eval $(docker-machine env --unset)_. Удаление - _docker-machine rm <имя>_.
+• docker-machine создает хост для докер демона со указываемым образом в --googlemachine-image, в ДЗ используется ubuntu-16.04. Образы которые используются для построения докер контейнеров к этому никак не относятся.
+• Все докер команды, которые запускаются в той же консоли после _eval $(docker-machine env <имя>)_ работают с удаленным докер демоном в GCP.
 
 Запускаем:
 
@@ -123,28 +110,24 @@ docker-host   -        google   Running   tcp://35.195.255.22:2376           v19
 $ eval $(docker-machine env docker-host)
 ```
 
-Теперь когда у вас запущен докер хост в GCP,
-можете самостоятельно повторить демо из лекции
-посвященные:
+Теперь когда у вас запущен докер хост в GCP, можете самостоятельно повторить демо из лекции посвященные:
 • PID namespace (изоляция процессов)
 • net namespace (изоляция сети)
 • user namespaces (изоляция пользователей)
 
-P.S. Для реализации Docker-in-Docker можно
-использовать этот [браз](https://github.com/jpetazzo/dind). Дока по [user namespace](https://docs.docker.com/engine/security/userns-remap/).
+Для реализации Docker-in-Docker можно использовать этот [образ](https://github.com/jpetazzo/dind). Дока по [user namespace](https://docs.docker.com/engine/security/userns-remap/).
 
-docker run --rm -ti tehbilly/htop
+• docker run --rm -ti tehbilly/htop
 • docker run --rm --pid host -ti tehbilly/htop
 
 вторая команда запустит полноценный htop
 
-Для дальнейшей работы нам потребуются четыре файла,
-их содержание вы найдете на следующих слайдах
+Для дальнейшей работы нам потребуются четыре файла:
 • Dockerfile - текстовое описание нашего образа
 • mongod.conf - подготовленный конфиг для mongodb
-• db_config - содержит переменную окружения со
-ссылкой на mongodb
+• db_config - содержит переменную окружения со ссылкой на mongodb
 • start.sh - скрипт запуска приложения
+
 Вся работа происходит в папке docker-monolith
 
 собираем образ:
@@ -159,12 +142,10 @@ Successfully built 08804c9c1642
 Successfully tagged reddit:latest
 ```
 
-• Точка в конце обязательна, она указывает на путь
-до Docker-контекста
+• Точка в конце обязательна, она указывает на путь до Docker-контекста
 • Флаг -t задает тег для собранного образа
 
-Посмотрим на все образы (в том числе
-промежуточные):
+Посмотрим на все образы (в том числе промежуточные):
 
 ```bash
 $ docker images -a
@@ -183,8 +164,7 @@ ubuntu              16.04               005d2078bdfa        2 weeks ago         
 tehbilly/htop       latest              4acd2b4de755        2 years ago          6.91MB
 ```
 
-теперь можно запустить наш
-контейнер командой:
+теперь можно запустить наш контейнер командой:
 
 ```bash
 shaad@shaad-mobile:~/DevOps/shaadowsky_microservices/docker-monolith$ docker run --name reddit -d --network=host reddit:latest
@@ -194,26 +174,23 @@ NAME          ACTIVE   DRIVER   STATE     URL                        SWARM   DOC
 docker-host   *        google   Running   tcp://35.195.255.22:2376           v19.03.8   
 ```
 
-Откройте в браузере ссылку http://<ваш_IP_адрес>:
-9292
+Откройте в браузере ссылку http://<ваш_IP_адрес>:9292
 
 упс, недоступно, надо открыть порт:
 
-gcloud compute firewall-rules create reddit-app \
+```bash
+$ gcloud compute firewall-rules create reddit-app \
  --allow tcp:9292 \
  --target-tags=docker-machine \
  --description="Allow PUMA connections" \
  --direction=INGRESS
+```
 
 ### Docker Hub
 
-Docker Hub - это облачный registry сервис от
-компании Docker. В него можно выгружать и
-загружать из него докер образы. Docker по
-умолчанию скачивает образы из докер хаба. 
+Docker Hub - это облачный registry сервис от компании Docker. В него можно выгружать и загружать из него докер образы. Docker по умолчанию скачивает образы из докер хаба. 
 
-Аутентифицируемся на docker hub для
-продолжения работы:
+Аутентифицируемся на docker hub для продолжения работы:
 
 ```bash
 $ docker login
@@ -221,8 +198,7 @@ Authenticating with existing credentials...
 Login Succeeded
 ```
 
-Загрузим наш образ на docker hub для
-использования в будущем:
+Загрузим наш образ на docker hub для использования в будущем:
 
 ```bash
 shaad@shaad-mobile:~/DevOps/shaadowsky_microservices/docker-monolith$ docker tag reddit:latest shaadowsky/otus-reddit:1.0
@@ -234,10 +210,7 @@ b592b5433bbf: Mounted from library/ubuntu
 1.0: digest: sha256:e383de5c0b04551be2f4a4296a6c1cd273a930dc18129ed3848530f28dfa1ba6 size: 3035
 ```
 
-Т.к. теперь наш образ есть в докер хабе, то мы
-можем запустить его не только в докер хосте в
-GCP, но и в вашем локальном докере или на
-другом хосте.
+Т.к. теперь наш образ есть в докер хабе, то мы можем запустить его не только в докер хосте в GCP, но и в вашем локальном докере или на другом хосте.
 Выполним в другой консоли:
 
 ```bash
@@ -252,11 +225,7 @@ Status: Downloaded newer image for shaadowsky/otus-reddit:1.0
 a9d13c0d5328506b7f1e9d42af6e921e12c08e0eb2707d03ba6c7a26af655894
 ```
 
-Дополнительно можете с помощью следующих команд изучить логи
-контейнера, зайти в выполняемый контейнер, посмотреть список
-процессов, вызвать остановку контейнера, запустить его повторно,
-остановить и удалить, запустить контейнер без запуска приложения
-и посмотреть процессы:
+Дополнительно можете с помощью следующих команд изучить логи контейнера, зайти в выполняемый контейнер, посмотреть список процессов, вызвать остановку контейнера, запустить его повторно, остановить и удалить, запустить контейнер без запуска приложения и посмотреть процессы:
 • docker logs reddit -f
 • docker exec -it reddit bash
 • ps aux
@@ -267,10 +236,7 @@ a9d13c0d5328506b7f1e9d42af6e921e12c08e0eb2707d03ba6c7a26af655894
 • ps aux
 • exit
 
-И с помощью следующих команд можно посмотреть подробную информацию о
-образе, вывести только определенный фрагмент информации, запустить
-приложение и добавить/удалить папки и посмотреть дифф, проверить что
-после остановки и удаления контейнера никаких изменений не останется:
+И с помощью следующих команд можно посмотреть подробную информацию о образе, вывести только определенный фрагмент информации, запустить приложение и добавить/удалить папки и посмотреть дифф, проверить что после остановки и удаления контейнера никаких изменений не останется:
 • docker inspect <your-login>/otus-reddit:1.0
 • docker inspect <your-login>/otus-reddit:1.0 -f '{{.ContainerConfig.Cmd}}'
 • docker run --name reddit -d -p 9292:9292 <your-login>/otus-reddit:1.0
@@ -285,5 +251,3 @@ a9d13c0d5328506b7f1e9d42af6e921e12c08e0eb2707d03ba6c7a26af655894
 • ls /
 
 docker build --no-cache на случай RUN apt-get -y update
-
-op&
