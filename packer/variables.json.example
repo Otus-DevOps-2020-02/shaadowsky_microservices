@@ -1,0 +1,13 @@
+{
+    "project_id": "YOUR_PROJECT",
+    "zone": "YOUR_ZONE",
+    "machine_type": "f1-micro",
+    "source_image_family": "NAME_IMAGE",
+    "image_description": "YOUR_DESCRIPTION",
+    "ssh_username": "YOUR_NAME",
+    "disk_size": "10",
+    "disk_type": "pd-standard",
+    "network": "default",
+    "tags": "YOUR_TAGS"
+}
+
