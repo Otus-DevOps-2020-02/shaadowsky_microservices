@@ -251,3 +251,33 @@ a9d13c0d5328506b7f1e9d42af6e921e12c08e0eb2707d03ba6c7a26af655894
 • ls /
 
 docker build --no-cache на случай RUN apt-get -y update
+
+Подключаемся к ранее созданному Docker host’у (см. предыдущее ДЗ):
+
+```bash
+[shaad@shaad-mobile shaadowsky_microservices]$ docker-machine ls
+NAME          ACTIVE   DRIVER   STATE     URL                        SWARM   DOCKER     ERRORS
+docker-host   -        google   Running   tcp://35.195.255.22:2376           v19.03.8   
+```
+
+Качаем архив, распаковываем его и удаляем архив. Затем переименуем его в _src_, который будет основным каталогом этого ДЗ.
+
+Теперь наше приложение состоит из трех компонентов:
+post-py - сервис отвечающий за написание постов
+comment - сервис отвечающий за написание комментариев
+ui - веб-интерфейс, работающий с другими сервисами
+
+Для работы нашего приложения также требуется база данных MongoDB
+
+Создаем файл:
+
+```./post-py/Dockerfile
+FROM python:3.6.0-alpine
+WORKDIR /app
+ADD . /app
+RUN pip install -r /app/requirements.txt
+ENV POST_DATABASE_HOST post_db
+ENV POST_DATABASE posts
+CMD ["python3", "post_app.py"]
+```
+
