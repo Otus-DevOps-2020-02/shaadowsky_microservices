@@ -145,6 +145,64 @@ $ docker kill $(docker ps -q)
 
 ### уменьшаем образа
 
+Поменяем содержимое ./ui/Dockerfile
+
+```code
+FROM ubuntu:16.04
+RUN apt-get update \
+    && apt-get install -y ruby-full ruby-dev build-essential \
+    && gem install bundler --no-ri --no-rdoc
+
+ENV APP_HOME /app
+RUN mkdir $APP_HOME
+
+WORKDIR $APP_HOME
+ADD Gemfile* $APP_HOME/
+RUN bundle install
+ADD . $APP_HOME
+
+ENV POST_SERVICE_HOST post
+ENV POST_SERVICE_PORT 5000
+ENV COMMENT_SERVICE_HOST comment
+ENV COMMENT_SERVICE_PORT 9292
+
+CMD ["puma"]
+```
+
+и пересоберём ui - _docker build -t <your-login>/ui:2.0 ./ui_, как видно, на основе образа убунту 1604, образ "весит" на 300 Мб меньше
+
+```bash
+$ docker images
+REPOSITORY               TAG                 IMAGE ID            CREATED             SIZE
+shaadowsky/ui            2.0                 3bb1b9f34cb9        7 seconds ago       461MB
+shaadowsky/ui            1.0                 b862ab9aaebc        42 minutes ago      785MB
+```
+
+#### ДОДЕЛЫВАЕМ позже уменьшение образов
+
+При остановке контейнера mongo данные пропали. Прокинем вольюм для MongoDB:
+
+```
+ docker volume create reddit_db
+```
+
+уберем старые контейнеры и запустим новые:
+
+```
+docker run -d --network=reddit --network-alias=post_db \
+  --network-alias=comment_db -v reddit_db:/data/db mongo:latest
+docker run -d --network=reddit \
+  --network-alias=post <your-login>/post:1.0
+docker run -d --network=reddit \
+  --network-alias=comment <your-login>/comment:1.0
+docker run -d --network=reddit \
+  -p 9292:9292 <your-login>/ui:2.0
+```
+
+- Зайдите на http://<docker-host-ip>:9292/
+- Напишите пост
+- Перезапустите контейнеры
+- Проверьте, что пост остался на месте
 
 
 
