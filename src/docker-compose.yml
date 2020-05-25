@@ -10,7 +10,7 @@ services:
     build: ./ui
     image: "${USERNAME}/ui:$VER_UI"
     ports:
-      - $EXT_PORT:9292/tcp
+      - $EXTERNAL_PORT:9292/tcp
     networks:
       - front_net
   post:
@@ -32,4 +32,3 @@ volumes:
 networks:
   back_net:
   front_net:
-
