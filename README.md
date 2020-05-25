@@ -1,6 +1,7 @@
 # shaadowsky_microservices
 shaadowsky microservices repository
 
+
 ## Docker-образы, микросервисы
 
 ### Цели задания
@@ -203,10 +204,4 @@ docker run -d --network=reddit \
 - Напишите пост
 - Перезапустите контейнеры
 - Проверьте, что пост остался на месте
-
-
-
-
-
-
 
