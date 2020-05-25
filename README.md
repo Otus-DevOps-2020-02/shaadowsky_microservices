@@ -326,12 +326,16 @@ src_ui_1        puma                          Up      0.0.0.0:9292->9292/tcp
 
 
 
+### cheatsheet
 
+форматируем вывод docker ps -a
 
+```code
+docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Command}}\t {{.Status}}\t{{.Ports}}"
+```
 
+прибиваем контейнеры
 
-
-
-
-
-
+```code
+docker kill $(docker ps -q)
+```
