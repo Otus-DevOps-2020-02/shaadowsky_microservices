@@ -1,0 +1,9 @@
+---
+- name: Install runner
+  hosts: all
+  become: true
+  vars_files:
+    - vars.yml
+  roles:
+    - { role: riemers.gitlab-runner }
+
