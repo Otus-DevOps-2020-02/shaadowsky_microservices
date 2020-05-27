@@ -8,11 +8,22 @@ build_job:
   script:
     - echo 'Building'
 
+variables:
+  DATABASE_URL: 'mongodb://mongo/user_posts'
+
+before_script:
+  - cd reddit
+  - bundle install
+
 test_unit_job:
   stage: test
+  services:
+    - mongo: latest
+  script:
+    -ruby simpletest.rb
   script:
     - echo 'Testing 1'
-
+  
 test_integration_job:
   stage: test
   script:
@@ -22,3 +33,6 @@ deploy_job:
   stage: deploy
   script:
     - echo 'Deploy'
+  environment:
+    name: dev
+    url: http://dev/example.com
