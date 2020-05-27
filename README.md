@@ -190,14 +190,18 @@ gem 'json'
 
 Изменим пайплайн таким образом, чтобы job deploy стал определением окружения dev, на которое условно будет выкатываться каждое изменение в коде проекта.
 
+1. Переименуем deploy stage в review.
+2. deploy_job заменим на deploy_dev_job
+3. Добавим environment
+
 ```code
-deploy_job:
+deploy_dev_job:
   stage: deploy
   script:
     - echo 'Deploy'
   environment:
     name: dev
-    url: http://dev/example.com
+    url: http://dev.example.com
 ```
 
 После изменения файла .gitlab-ci.yml не забывать зафиксировать изменение в git и отправить изменения на сервер. (git commit и git push gitlab gitlab-ci-1)

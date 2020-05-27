@@ -1,7 +1,7 @@
 stages:
   - build
   - test
-  - deploy
+  - review
 
 build_job:
   stage: build
@@ -29,10 +29,10 @@ test_integration_job:
   script:
     - echo 'Testing 2'
 
-deploy_job:
+deploy_dev_job:
   stage: deploy
   script:
     - echo 'Deploy'
   environment:
     name: dev
-    url: http://dev/example.com
+    url: http://dev.example.com
