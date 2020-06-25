@@ -1,12 +1,9 @@
+image: ruby:2.4.2
+
 stages:
   - build
   - test
   - review
-
-build_job:
-  stage: build
-  script:
-    - echo 'Building'
 
 variables:
   DATABASE_URL: 'mongodb://mongo/user_posts'
@@ -15,14 +12,17 @@ before_script:
   - cd reddit
   - bundle install
 
+build_job:
+  stage: build
+  script:
+    - echo 'Building'
+  
 test_unit_job:
   stage: test
   services:
     - mongo: latest
   script:
-    -ruby simpletest.rb
-  script:
-    - echo 'Testing 1'
+    - ruby simpletest.rb
   
 test_integration_job:
   stage: test
@@ -30,7 +30,7 @@ test_integration_job:
     - echo 'Testing 2'
 
 deploy_dev_job:
-  stage: deploy
+  stage: review
   script:
     - echo 'Deploy'
   environment:

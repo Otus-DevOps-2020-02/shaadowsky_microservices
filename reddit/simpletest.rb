@@ -16,4 +16,3 @@ class MyAppTest < Test::Unit::TestCase
     assert last_response.ok?
   end
 end
-
