@@ -245,3 +245,31 @@ only:
   - /^\d+\.\d+\.\d+/
 ```
 
+### Динамические окружения
+
+Gitlab CI позволяет определить динамические окружения, это мощная функциональность позволяет вам иметь выделенный стенд для, например, каждой feature-ветки в git. Определяются динамические окружения с помощью переменных, доступных в .gitlab-ci.yml
+
+```
+...
+deploy_dev_job:
+...
+
+branch review:
+  stage: review
+  script: echo "Deploy to $CI_ENVIRONMENT_SLUG"
+  environment:
+    name: branch/$CI_COMMIT_REF_NAME
+    url: http://$CI_ENVIRONMENT_SLUG.example.com
+  only:
+    - branches
+  except:
+    - master
+
+staging:
+...
+```
+
+Теперь, на каждую ветку в git отличную от master
+Gitlab CI будет определять новое окружение.
+Если создать ветки new-feature и bugfix, то на
+странице окружений будет следующее:
