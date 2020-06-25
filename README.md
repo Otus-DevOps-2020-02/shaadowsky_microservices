@@ -206,3 +206,32 @@ deploy_dev_job:
 
 После изменения файла .gitlab-ci.yml не забывать зафиксировать изменение в git и отправить изменения на сервер. (git commit и git push gitlab gitlab-ci-1)
 
+Если на dev мы можем выкатывать последнюю версию кода, то к production окружению это может быть неприменимо, если, конечно, вы не стремитесь к continuous deployment.
+
+Определим два новых этапа: stage и production, первый будет содержать job имитирующий выкатку на staging окружение, второй на production окружение.
+
+Определим эти job таким образом, чтобы они запускались с кнопки (_when: manual_)
+
+```
+...
+deploy_dev_job:
+...
+
+staging:
+  stage: stage
+  when: manual
+  script:
+    - echo 'Deploy'
+  environment:
+    name: stage
+    url: https://beta.example.com 
+
+production:
+  stage: production
+  when: manual
+  script:
+    - echo 'Deploy'
+  environment:
+    name: production
+    url: https://example.com
+```
