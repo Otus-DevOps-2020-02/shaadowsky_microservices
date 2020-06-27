@@ -1,275 +1,81 @@
 # shaadowsky_microservices
 shaadowsky microservices repository
 
-## GitlabCI, построение непрерывной поставки
+## Введение в мониторинг.
 
 ### план
 
-• Подготовить инсталляцию Gitlab CI
-• Подготовить репозиторий с кодом приложения
-• Описать для приложения этапы пайплайна
-• Определить окружения
+• Prometheus: запуск, конфигурация, знакомство с Web UI
+• Мониторинг состояния микросервисов
+• Сбор метрик хоста с использованием экспортера
 
-### Инсталляция Gitlab CI
+### подготовка окружения
 
-Для выполнения этого ДЗ нам потребуется развернуть свой Gitlab CI с помощью Docker. CI-сервис является одним из ключевых инфраструктурных сервисов в процессе выпуска ПО и к его доступности, бесперебойной работе и безопасности должны предъявляться повышенные требования.
-
-упростим процедуру установки и настройки. 
-
-Gitlab CI состоит из множества компонент и выполняет ресурсозатратную работу, например, компиляция приложений. Нам потребуется создать в Google Cloud новую виртуальную машину со следующими параметрами:
-• 1 CPU
-• 3.75GB RAM
-• 50-100 GB HDD
-• Ubuntu 16.04
-
-Развернём такую машину с помощью вебпанели gconsole.
-
-Для запуска Gitlab CI будем использовать omnibus-установку, у этого подхода есть как свои плюсы, так и минусы. Основной плюс для нас в том, что мы можем быстро запустить cервис и сконцентрироваться на процессе непрерывной поставки. Минусом такого типа установки является то, что такую инсталляцию тяжелее эксплуатировать и дорабатывать, но долговременная эксплуатация этого сервиса не входит в наши цели.
-
-Более подробно об этом в [документации](https://docs.gitlab.com/omnibus/README.html)
-
-Натыкаем через вебконсоль нужную машину в GCP (стоит попробовать на других ОС, но т.к. на курсе убунту 1604, то проверка тревисом не пройдёт) и развернем докер, докер-композ скриптом из ./gitlab-ci/prep.sh.
-
-Если все прошло успешно, то вы сможете в браузер перейти на http://<your-vm-ip> и форму установки пароля. Создаем пароль, входим под дефолтным пользователем root. После этого снимаем галку в настройках с sign-up enabled,te создаем группу homework c проектом example. Также необходимо создать токен лдя авторизации при пуше. По сути это тот же пароль.
-
-====
-root токен - WFDczZMhskYucu7e_7EB
-====
-
-Добавляем remote в <username>_microservices
-
-> git checkout -b gitlab-ci-1
-> git remote add gitlab http://<your-vm-ip>/homework/example.git
-> git push gitlab gitlab-ci-1
-
-переходим к определению ci/cd Pipeline для проекта. Для этого надо добавить в репу файл .gitlab-ci.yml
-
-```code
-stages:
-  - build
-  - test
-  - deploy
-
-build_job:
-  stage: build
-  script:
-    - echo 'Building'
-
-test_unit_job:
-  stage: test
-  script:
-    - echo 'Testing 1'
-
-test_integration_job:
-  stage: test
-  script:
-    - echo 'Testing 2'
-
-deploy_job:
-  stage: deploy
-  script:
-    - echo 'Deploy'
-```
-
-После чего сохраняем файл
-> git add .gitlab-ci.yml
-> git commit -m 'add pipeline definition'
-> git push gitlab gitlab-ci-1
-
-Теперь если перейти в раздел CI/CD мы увидим, что пайплайн готов к запуску. Но находится в статусе pending / stuck так как у нас нет runner
-
-![alt text](./readme/files/gitlab-ci-1/stuck_pipe.png)
-
-Запустим Runner и зарегистрируем его в интерактивном режиме
-
-Перед тем, как запускать и регистрировать runner нужно получить токен. Settings - CI/CD - Runners settings - Set up a specific Runner manually
-
-runner-token = U4oziTywsa9sP5orKX1wyWx_
-
-на сервере, где работает gitlab ci выполнить команду:
+Создадим правило фаервола для Prometheus и Puma:
 
 ```
-docker run -d --name gitlab-runner --restart always \
--v /srv/gitlab-runner/config:/etc/gitlab-runner \
--v /var/run/docker.sock:/var/run/docker.sock \
-gitlab/gitlab-runner:latest 
+$ gcloud compute firewall-rules create prometheus-default --allow tcp:9090
+$ gcloud compute firewall-rules create puma-default --allow tcp:9292
 ```
 
-После запуска Runner нужно зарегистрировать, это можно сделать так:
-
-```bash
-root@gitlab-ci:~# docker exec -it gitlab-runner gitlab-runner register --run-untagged --locked=false
-Please enter the gitlab-ci coordinator URL (e.g. https://gitlab.com/):
-http://<YOUR-VM-IP>/
-Please enter the gitlab-ci token for this runner:
-<TOKEN>
-Please enter the gitlab-ci description for this runner:
-[38689f5588fe]: my-runner
-Please enter the gitlab-ci tags for this runner (comma separated):
-linux,xenial,ubuntu,docker
-Please enter the executor:
-docker
-Please enter the default Docker image (e.g. ruby:2.1):
-alpine:latest
-Runner registered successfully.
-```
-
-Если все получилось, то в настройках вы увидите новый runner 
-
-Добавим исходный код reddit в репозиторий
-> git clone https://github.com/express42/reddit.git && rm -rf ./reddit/.git
-> git add reddit/
-> git commit -m “Add reddit app”
-> git push gitlab gitlab-ci-1
-
-Добавим тестов, Изменим описание пайплайна в .gitlab-ci.yml 
-
-```code
-...
-
-...
-
-variables:
-  DATABASE_URL: 'mongodb://mongo/user_posts'
-
-before_script:
-  - cd reddit
-  - bundle install
-
-test_unit_job:
-  stage: test
-  services:
-    - mongo: latest
-  script:
-    -ruby simpletest.rb
-  script:
-    - echo 'Testing 1'
-  
-...
-
-...
-```
-
-В описании pipeline мы добавили вызов теста в файле simpletest.rb, нужно создать его в папке reddit
-
-```code
-require_relative './app'
-require 'test/unit'
-require 'rack/test'
-
-set :environment, :test
-
-class MyAppTest < Test::Unit::TestCase
-  include Rack::Test::Methods
-
-  def app
-    Sinatra::Application
-  end
-
-  def test_get_request
-    get '/'
-    assert last_response.ok?
-  end
-end
-```
-
-Последним шагом нужно добавить библиотеку для тестирования в reddit/Gemfile приложения. Добавим gem 'rack-test'
-
-
-```code
-gem 'bcrypt'
-gem 'puma'
-gem 'mongo'
-gem 'json'
-+ gem 'rack-test'
-```
-
-Теперь на каждое изменение в коде приложения будет запущен тест
-
-Вернемся к академическому пайплайну, который описывает шаги сборки, тестирования и деплоймента. 
-
-Изменим пайплайн таким образом, чтобы job deploy стал определением окружения dev, на которое условно будет выкатываться каждое изменение в коде проекта.
-
-1. Переименуем deploy stage в review.
-2. deploy_job заменим на deploy_dev_job
-3. Добавим environment
-
-```code
-deploy_dev_job:
-  stage: deploy
-  script:
-    - echo 'Deploy'
-  environment:
-    name: dev
-    url: http://dev.example.com
-```
-
-После изменения файла .gitlab-ci.yml не забывать зафиксировать изменение в git и отправить изменения на сервер. (git commit и git push gitlab gitlab-ci-1)
-
-Если на dev мы можем выкатывать последнюю версию кода, то к production окружению это может быть неприменимо, если, конечно, вы не стремитесь к continuous deployment.
-
-Определим два новых этапа: stage и production, первый будет содержать job имитирующий выкатку на staging окружение, второй на production окружение.
-
-Определим эти job таким образом, чтобы они запускались с кнопки (_when: manual_)
+Создадим Docker хост в GCE и настроим локальное окружение на работу с ним
 
 ```
-...
-deploy_dev_job:
-...
+$ export GOOGLE_PROJECT=_ваш-проект_
+# create docker host
+$ docker-machine create --driver google \
+    --google-machine-image https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts \
+    --google-machine-type n1-standard-1 \
+    --google-zone europe-west1-b \
+    docker-host
 
-staging:
-  stage: stage
-  when: manual
-  script:
-    - echo 'Deploy'
-  environment:
-    name: stage
-    url: https://beta.example.com 
+# configure local env
+$ eval $(docker-machine env docker-host)
 
-production:
-  stage: production
-  when: manual
-  script:
-    - echo 'Deploy'
-  environment:
-    name: production
-    url: https://example.com
+$ docker run --rm -p 9090:9090 -d --name prometheus  prom/prometheus
+$ docker-machine ip docker-host
 ```
 
-Обычно, на production окружение выводится приложение с явно зафиксированной версией (например, 2.4.10).
-
-Добавим в описание pipeline директиву, которая не позволит нам выкатить на staging и production код, не помеченный с помощью тэга в git. Добавляем слудющую строку после ручного запуска:
+по адресу докерхоста на порту 9090 будет доступен прометей.
 
 ```
-only:
-  - /^\d+\.\d+\.\d+/
+$ docker stop prometheus
 ```
 
-### Динамические окружения
+До перехода к следующему шагу приведем структуру каталогов в более четкий/удобный вид:
+1. Создадим директорию docker в корне репозитория и перенесем в нее директорию docker-monolith и файлы docker-compose.* и все .env (.env должен быть в .gitgnore), в репозиторий закоммичен .env.example, из которого создается .env
+2. Создадим в корне репозитория директорию monitoring. В ней будет хранится все, что относится к мониторингу
+3. Не забываем про .gitgnore и актуализируем записи при необходимости
 
-Gitlab CI позволяет определить динамические окружения, это мощная функциональность позволяет вам иметь выделенный стенд для, например, каждой feature-ветки в git. Определяются динамические окружения с помощью переменных, доступных в .gitlab-ci.yml
+P.S. С этого момента сборка сервисов отделена от  docker-compose, поэтому инструкции build можно удалить из docker-compose.yml.
+
+Создайте директорию _monitoring/prometheus_ c Dockerfile, который будет копировать файл конфигурации с локальной машины внутрь контейнера
 
 ```
-...
-deploy_dev_job:
-...
-
-branch review:
-  stage: review
-  script: echo "Deploy to $CI_ENVIRONMENT_SLUG"
-  environment:
-    name: branch/$CI_COMMIT_REF_NAME
-    url: http://$CI_ENVIRONMENT_SLUG.example.com
-  only:
-    - branches
-  except:
-    - master
-
-staging:
-...
+FROM prom/prometheus:v2.1.0
+ADD prometheus.yml /etc/prometheus/
 ```
 
-Теперь, на каждую ветку в git отличную от master
-Gitlab CI будет определять новое окружение.
-Если создать ветки new-feature и bugfix, то на
-странице окружений будет следующее:
+Вся конфигурация Prometheus, в отличие от многих других систем мониторинга, происходит через файлы конфигурации и опции командной строки. Определим простой конфигурационный файл для сбора метрик с наших микросервисов. В директории monitoring/prometheus создайте файл prometheus.yml со следующим содержимым:
+
+```
+---
+global:
+  scrape_interval: '5s'   # частота сбора метрик
+
+scrape_configs:
+  - job_name: 'prometheus'  # Джобы объединяют в группы (endpoint-ы), выполняющие одинаковую функцию
+    static_configs:
+      - targets:
+        - 'localhost:9090'  # адрес сбора метрик (endpoint)
+
+  - job_name: 'ui'
+    static_configs:
+      - targets:
+        - 'ui:9292'
+
+  - job_name: 'comment'
+    static_configs:
+      - targets:
+        - 'comment:9292'
+```
