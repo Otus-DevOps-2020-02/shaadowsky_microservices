@@ -79,3 +79,84 @@ scrape_configs:
       - targets:
         - 'comment:9292'
 ```
+
+В директории prometheus собираем Docker образ:
+$ export USER_NAME=username
+$ docker build -t $USER_NAME/prometheus .
+Где USER_NAME - ВАШ логин от DockerHub. 
+
+В коде микросервисов есть healthcheck-и для
+проверки работоспособности приложения.
+Сборку образов теперь необходимо производить
+при помощи скриптов docker_build.sh, которые есть
+в директории каждого сервиса. С его помощью мы
+добавим информацию из Git в наш healthcheck. 
+
+Выполните сборку образов при помощи скриптов docker_build.sh в директории каждого сервиса.
+
+```
+/src/ui $ bash docker_build.sh
+/src/post-py $ bash docker_build.sh
+/src/comment $ bash docker_build.sh
+```
+
+Или сразу все из корня репозитория:
+
+```
+for i in ui post-py comment; do cd src/$i; bash docker_build.sh; cd -; done
+```
+
+Будем поднимать наш Prometheus совместно с микросервисами. Определите в вашем docker/docker-compose.yml файле новый сервис:
+
+```
+services:
+...
+  prometheus:
+    image: ${USERNAME}/prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=1d'   # передаем доп. параметры в командной строке и задаем время хранения метрик в 1 день
+
+volumes:
+  prometheus_data:
+```
+
+так как прометею надо общаться со всеми микросервисами, добавим секцию networks:
+
+```
+    networks:
+      - back_net
+      - front_net
+```
+
+Поднимем сервисы, определенные в docker/dockercompose.yml
+
+```
+$ docker-compose up -d
+```
+
+Проверьте, что приложение работает и Prometheus запустился.
+
+Посмотрим список endpoint-ов, с которых собирает
+информацию Prometheus. Помните, что помимо самого
+Prometheus, мы определили в конфигурации мониторинг ui и
+comment сервисов. Endpoint-ы должны быть в состоянии UP. 
+
+#### Healthchecks
+
+Healthcheck-и представляют собой проверки того, что
+наш сервис здоров и работает в ожидаемом режиме. В
+нашем случае healthcheck выполняется внутри кода
+микросервиса и выполняет проверку того, что все
+сервисы, от которых зависит его работа, ему доступны.
+Если требуемые для его работы сервисы здоровы, то
+healthcheck проверка возвращает status = 1, что
+соответсвует тому, что сам сервис здоров.
+Если один из нужных ему сервисов нездоров или
+недоступен, то проверка вернет status = 0. 
+

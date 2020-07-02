@@ -1,34 +1,45 @@
 version: '3.3'
 services:
   post_db:
-    image: mongo:3.2
+    image: mongo:${MONGO_VERSION}
     volumes:
       - post_db:/data/db
     networks:
-      - back_net
+      - reddit
   ui:
-    build: ./ui
-    image: "${USERNAME}/ui:$VER_UI"
+    image: "${USER_NAME}/ui:$VER_UI"
     ports:
-      - $EXTERNAL_PORT:9292/tcp
+      - ${UI_PORT}:${REDDIT_PORT}/tcp
     networks:
-      - front_net
+      - ui
   post:
-    build: ./post-py
-    image: ${USERNAME}/post:1.0
+    image: ${USER_NAME}/post:latest
     networks:
-      - back_net
-      - front_net
+      - reddit
+      - ui
   comment:
-    build: ./comment
-    image: ${USERNAME}/comment:1.0
+    image: ${USER_NAME}/comment:latest
     networks:
-      - back_net
-      - front_net
+      - reddit
+      - ui
+  prometheus:
+    image: ${USER_NAME}/prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=1d'
+    networks:
+      - reddit
+      - ui
 
 volumes:
   post_db:
+  prometheus_data:
 
 networks:
-  back_net:
-  front_net:
+  reddit:
+  ui:
