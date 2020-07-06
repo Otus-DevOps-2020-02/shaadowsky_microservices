@@ -1,17 +1,18 @@
 # shaadowsky_microservices
 shaadowsky microservices repository
 
-## Введение в мониторинг.
+## Мониторинг приложения и инфраструктуры
 
 ### план
 
-• Prometheus: запуск, конфигурация, знакомство с Web UI
-• Мониторинг состояния микросервисов
-• Сбор метрик хоста с использованием экспортера
+- Мониторинг Docker контейнеров
+- Визуализация метрик
+- Сбор метрик работы приложения и бизнес метрик
+- Настройка и проверка алертинга
 
 ### подготовка окружения
 
-Создадим правило фаервола для Prometheus и Puma:
+правила для файрвола создаются по мере необходимости по типу:
 
 ```
 $ gcloud compute firewall-rules create prometheus-default --allow tcp:9090
@@ -32,189 +33,431 @@ $ docker-machine create --driver google \
 # configure local env
 $ eval $(docker-machine env docker-host)
 
-$ docker run --rm -p 9090:9090 -d --name prometheus  prom/prometheus
+# Переключение на локальный докер
+eval $(docker-machine env --unset)
+
 $ docker-machine ip docker-host
+
+$ docker-machine rm docker-host
 ```
 
-по адресу докерхоста на порту 9090 будет доступен прометей.
+### Мониторинг Docker контейнеров
+
+Разделим файлы Docker Compose. В данный момент и мониторинг и приложения у нас описаны в одном большом docker-compose.yml. С одной стороны это просто, а с другой - мы смешиваем различные сущности, и сам файл быстро растет.
+
+Оставим описание приложений в docker-compose.yml, а мониторинг выделим в отдельный файл docker-composemonitoring.yml. Для запуска приложений будем как и ранее использовать docker-compose up -d, а для мониторинга - docker-compose -f docker-compose-monitoring.yml up -d
+
+Мы будем использовать для наблюдения за состоянием наших Docker контейнеров. cAdvisor собирает информацию о ресурсах потребляемых контейнерами и характеристиках их работы. Примерами метрик являются:
+- процент использования контейнером CPU и памяти, выделенные для его запуска,
+- объем сетевого трафика
+- и др.
+
+cAdvisor также будем запускать в контейнере. Для этого добавим новый сервис в наш компоуз файл мониторинга dockercompose-monitoring.yml. Поместите данный сервис в одну сеть с Prometheus, чтобы тот мог собирать с него метрики.
 
 ```
-$ docker stop prometheus
+cadvisor:
+  image: google/cadvisor:v0.29.0
+  volumes:
+    - '/:/rootfs:ro'
+    - '/var/run:/var/run:rw'
+    - '/sys:/sys:ro'
+    - '/var/lib/docker/:/var/lib/docker:ro'
+  ports:
+    - '8080:8080'
 ```
 
-До перехода к следующему шагу приведем структуру каталогов в более четкий/удобный вид:
-1. Создадим директорию docker в корне репозитория и перенесем в нее директорию docker-monolith и файлы docker-compose.* и все .env (.env должен быть в .gitgnore), в репозиторий закоммичен .env.example, из которого создается .env
-2. Создадим в корне репозитория директорию monitoring. В ней будет хранится все, что относится к мониторингу
-3. Не забываем про .gitgnore и актуализируем записи при необходимости
-
-P.S. С этого момента сборка сервисов отделена от  docker-compose, поэтому инструкции build можно удалить из docker-compose.yml.
-
-Создайте директорию _monitoring/prometheus_ c Dockerfile, который будет копировать файл конфигурации с локальной машины внутрь контейнера
+Добавим информацию о новом сервисе в конфигурацию
+Prometheus, чтобы он начал собирать метрики:
+Пересоберем образ Prometheus с обновленной конфигурацией:
 
 ```
-FROM prom/prometheus:v2.1.0
-ADD prometheus.yml /etc/prometheus/
-```
-
-Вся конфигурация Prometheus, в отличие от многих других систем мониторинга, происходит через файлы конфигурации и опции командной строки. Определим простой конфигурационный файл для сбора метрик с наших микросервисов. В директории monitoring/prometheus создайте файл prometheus.yml со следующим содержимым:
-
-```
----
-global:
-  scrape_interval: '5s'   # частота сбора метрик
-
 scrape_configs:
-  - job_name: 'prometheus'  # Джобы объединяют в группы (endpoint-ы), выполняющие одинаковую функцию
+...
+  - job_name: 'cadvisor'
     static_configs:
       - targets:
-        - 'localhost:9090'  # адрес сбора метрик (endpoint)
-
-  - job_name: 'ui'
-    static_configs:
-      - targets:
-        - 'ui:9292'
-
-  - job_name: 'comment'
-    static_configs:
-      - targets:
-        - 'comment:9292'
+      - 'cadvisor:8080'
 ```
 
-В директории prometheus собираем Docker образ:
-$ export USER_NAME=username
+Пересоберем образ Prometheus с обновленной конфигурацией:
+
+```
+$ export USER_NAME=username # где username - ваш логин на Docker Hub
 $ docker build -t $USER_NAME/prometheus .
-Где USER_NAME - ВАШ логин от DockerHub. 
-
-В коде микросервисов есть healthcheck-и для
-проверки работоспособности приложения.
-Сборку образов теперь необходимо производить
-при помощи скриптов docker_build.sh, которые есть
-в директории каждого сервиса. С его помощью мы
-добавим информацию из Git в наш healthcheck. 
-
-Выполните сборку образов при помощи скриптов docker_build.sh в директории каждого сервиса.
-
-```
-/src/ui $ bash docker_build.sh
-/src/post-py $ bash docker_build.sh
-/src/comment $ bash docker_build.sh
 ```
 
-Или сразу все из корня репозитория:
+откроем порт:
 
 ```
-for i in ui post-py comment; do cd src/$i; bash docker_build.sh; cd -; done
+$ gcloud compute firewall-rules create cadvisor-default --allow tcp:8080
 ```
 
-Будем поднимать наш Prometheus совместно с микросервисами. Определите в вашем docker/docker-compose.yml файле новый сервис:
+Запустим сервисы: 
+
+```
+$ docker-compose up -d
+$ docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+cAdvisor имеет UI, в котором отображается собираемая о контейнерах информация. Откроем страницу Web UI по адресу http://<docker-machinehost-ip>:8080
+
+Нажмите ссылку Docker Containers (внизу слева) для просмотра информации по контейнерам. В UI мы можем увидеть: 
+- список контейнеров, запущенных на хосте
+- информацию о хосте (секция Driver Status)
+- информацию об образах контейнеров (секция Images)
+
+По пути /metrics все собираемые метрики публикуются для сбора Prometheus. Видим, что имена метрик контейнеров начинаются со слова container
+
+Проверим, что метрики контейнеров собираются Prometheus (ip:9090). Введем, слово container и посмотрим, что он предложит дополнить:
+
+### Визуализация метрик: Grafana
+
+Используем инструмент Grafana для визуализации данных из Prometheus. Добавим новый сервис в docker-compose-monitoring.yml,
 
 ```
 services:
-...
-  prometheus:
-    image: ${USERNAME}/prometheus
-    ports:
-      - '9090:9090'
+
+  grafana:
+    image: grafana/grafana:5.0.0
     volumes:
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention=1d'   # передаем доп. параметры в командной строке и задаем время хранения метрик в 1 день
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=secret
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
 
 volumes:
-  prometheus_data:
+  grafana_data:
 ```
 
-так как прометею надо общаться со всеми микросервисами, добавим секцию networks:
+Запустим новый сервис:
 
 ```
-    networks:
-      - back_net
-      - front_net
+$ docker-compose -f docker-compose-monitoring.yml up -d grafana
 ```
 
-Поднимем сервисы, определенные в docker/dockercompose.yml
+добавим правило для графаны
 
 ```
-$ docker-compose up -d
+$ gcloud compute firewall-rules create grafana-default --allow tcp:3000
 ```
 
-Проверьте, что приложение работает и Prometheus запустился.
+Откроем страницу Web UI Grafana по адресу http://<dockermachine-host-ip>:3000 и используем для входа логин и пароль администратора, которые мы передали через переменные окружения (admin/secret)
 
-Посмотрим список endpoint-ов, с которых собирает информацию Prometheus. Помните, что помимо самого Prometheus, мы определили в конфигурации мониторинг ui и comment сервисов. Endpoint-ы должны быть в состоянии UP. 
+Нажмем Add data source (Добавить источник данных). Зададим нужный тип и параметры подключения:
+Name: Prometheus Server
+Type: Prometheus
+URL: http://prometheus:9090
+Access: Proxy
+И затем нажмем Add
 
-#### Healthchecks
+Перейдем на сайт графаны, где можно найти и скачать большое количество уже созданных официальных и комьюнити дашбордов для визуализации различного типа метрик для разных систем мониторинга и баз данных. Выберем в качестве источника данных нашу систему мониторинга (Prometheus) и выполним поиск по категории Docker.
 
-Healthcheck-и представляют собой проверки того, что наш  сервис здоров и работает в ожидаемом режиме. В нашем случае healthcheck выполняется внутри кода микросервиса и выполняет проверку того, что все сервисы, от которых зависит его работа, ему доступны. Если требуемые для его работы сервисы здоровы, то healthcheck проверка возвращает status = 1, что соответсвует тому, что сам сервис здоров. Если один из нужных ему сервисов нездоров или недоступен, то проверка вернет status = 0. 
+Затем выберем популярный дашборд Docker and system monitoring. Нажмем Загрузить JSON. В директории monitoring создайте директории grafana/dashboards, куда поместите скачанный дашборд. Поменяйте название файла дашборда на DockerMonitoring.json.
 
-### Сбор метрик хоста
+Снова откроем веб-интерфейс
+Grafana и выберем импорт шаблона
+(Import). Загрузите скачанный дашборд. При загрузке укажите источник данных для визуализации (Prometheus Server). Должен появиться набор графиков с информацией о состоянии хостовой системы и работе контейнер
 
-#### Exporters
+Внесем метрики для сервиса UI:
+- счетчик ui_request_count, который считает каждый приходящий HTTP-запрос (добавляя через лейблы такую информацию как HTTP метод, путь, код возврата, мы уточняем данную метрику)
+- гистограмму ui_request_latency_seconds, которая позволяет отслеживать информацию о времени обработки каждого запроса
 
-Экспортер похож на вспомогательного агента для сбора метрик.
-В ситуациях, когда мы не можем реализовать отдачу метрик Prometheus в коде приложения, мы можем использовать экспортер, который будет транслировать метрики приложения или системы в формате доступном для чтения Prometheus.
+```src/ui/config.ru
++ require './middleware.rb'
 
-• Программа, которая делает метрики доступными для сбора Prometheus
-• Дает возможность конвертировать метрики в нужный для Prometheus формат
-• Используется когда нельзя поменять код приложения
-• Примеры: PostgreSQL, RabbitMQ, Nginx, Node exporter, cAdvisor
-
-Воспользуемся Node экспортер для сбора информации о работе Docker хоста (виртуалки, где унас запущены контейнеры) и  предоставлению этой информации в Prometheus. 
-
-Node экспортер будем запускать также в контейнере. Определим еще один сервис в docker/docker-compose.yml файле. 
-
-```
-services:
-
-  node-exporter:
-    image: prom/node-exporter:v0.15.2
-    user: root
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"'
-    networks:
-      - back_net
++ use Metrics
 ```
 
-Чтобы сказать Prometheus следить за еще одним сервисом, нам нужно добавить информацию о нем в конфиг. Добавим еще один job: 
+```src/ui/middleware.rb
+require 'prometheus/client'
+
+class Metrics
+
+  def initialize app
+    @app = app
+    prometheus = Prometheus::Client.registry
+    @request_count = Prometheus::Client::Counter.new(:ui_request_count, 'App Request Count')
+    @request_latency = Prometheus::Client::Histogram.new(:ui_request_latency_seconds, 'Request latency')
+    prometheus.register(@request_latency)
+    prometheus.register(@request_count)
+  end
+
+  def call env
+    request_started_on = Time.now
+    @status, @headers, @response = @app.call(env)
+    request_ended_on = Time.now
+    @request_latency.observe({ path: env['REQUEST_PATH'] }, request_ended_on - request_started_on)
+    @request_count.increment({ method: env['REQUEST_METHOD'], path: env['REQUEST_PATH'], http_status: @status })
+    [@status, @headers, @response]
+  end
+
+end
+```
+
+В качестве примера метрик приложения в сервис Post:
+- Гистограмму post_read_db_seconds, которая позволяет отследить информацию о времени требуемом для поиска поста в БД
+
+```src/post-py/post-app.py
+from flask import Flask, request, Response
+
+import prometheus_client
+import time
+
+CONTENT_TYPE_LATEST = str('text/plain; version=0.0.4; charset=utf-8')
+REQUEST_DB_LATENCY = prometheus_client.Histogram('post_read_db_seconds', 'Request DB time')
+...
+@app.route('/metrics')
+def metrics():
+    return Response(prometheus_client.generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+...
+
+@app.route("/post/<id>")
+def get_post(id):
+    start_time = time.time()
+    post = mongo_db.find_one({'_id': ObjectId(id)})
+    stop_time = time.time()  # + 0.3
+    resp_time = stop_time - start_time
+    REQUEST_DB_LATENCY.observe(resp_time)
+...
+```
+
+```src/post-py/requirements.txt
+prometheus_client==0.0.21
+flask==0.12.2
+pymongo==3.5.1
+```
+
+Созданные метрики придадут видимости работы нашего
+приложения и понимания, в каком состоянии оно сейчас находится.
+Например, время обработки HTTP запроса не должно быть
+большим, поскольку это означает, что пользователю приходится
+долго ждать между запросами, и это ухудшает его общее
+впечатление от работы с приложением. Поэтому большое время
+обработки запроса будет для нас сигналом проблемы.
+Отслеживая приходящие HTTP-запросы, мы можем, например,
+посмотреть, какое количество ответов возвращается с кодом
+ошибки. Большое количество таких ответов также будет служить
+для нас сигналом проблемы в работе приложения
+
+Добавим информацию о post-сервисе в конфигурацию
+Prometheus, чтобы он начал собирать метрики и с него:
 
 ```
-  - job_name: 'node'
+scrape_configs:
+...
+  - job_name: 'post'
     static_configs:
       - targets:
-        - 'node-exporter:9100' 
+        - 'post:5000'
 ```
 
-Не забудем собрать новый Docker для Prometheus:
+Пересоберем образ Prometheus с обновленной конфигурацией:
 
 ```
-monitoring/prometheus $ docker build -t $USER_NAME/prometheus .
+$ export USER_NAME=username # где, usename - ваш логин от DockerHub
+$ docker build -t $USER_NAME/prometheus .
 ```
 
-Пересоздадим наши сервисы
+добавим правило для сервиса post
 
 ```
-$ docker-compose down
-$ docker-compose up -d
+$ gcloud compute firewall-rules create post-default --allow tcp:5000
 ```
 
-посмотрим, список endpoint-ов Prometheus - должен появится еще один endpoint
+Пересоздадим нашу Docker инфраструктуру мониторинга:
 
-Получим информацию
-об использовании CPU (node_load1)
-Проверим мониторинг
-• Зайдем на хост: docker-machine ssh docker-host
-• Добавим нагрузки: yes > /dev/null
+```
+$ docker-compose -f docker-compose-monitoring.yml down
+$ docker-compose -f docker-compose-monitoring.yml up -d
+```
 
-нагрузка выросла, мониторинг отображает повышение загруженности CPU
+И добавим несколько постов в приложении и несколько комментов, чтобы собрать значения метрик приложения:
 
-Запушьте собранные вами образы на DockerHub:
+Построим графики собираемых метрик приложения. Выберем создать новый дашборд Снова откроем вебинтерфейс Grafana и выберем создание шаблона (Dashboard)
+1. Выбираем "Построить график" (New Panel ➡ Graph)
+2. Жмем один раз на имя графика (Panel Title), затем выбираем Edit:
+
+Построим для начала простой график изменения счетчика HTTP-запросов по времени. Выберем источник данных и в поле запроса введем название метрики ui_request_count. Далее достаточно нажать мышкой на любое место UI, чтобы убрать курсор из поля запроса, и Grafana выполнит запрос и построит график
+
+В правом верхнем углу мы можем уменьшить временной интервал, на котором строим график, и настроить автообновление данных:
+
+Сейчас мы получили график различных HTTP запросов, поступающих UI сервису. Изменим заголовок графика и описание: Сохраним созданный дашборд:
+
+Построим график запросов, которые возвращают код ошибки на этом же дашборде. Добавим еще один график на наш дашборд. Переходим в режим правки графика. В поле запросов запишем выражение для поиска всех http-запросов, у которых код возврата начинается либо с 4 либо с 5 (используем регулярное выражения для поиска по лейблу). Будем использовать функцию rate(), чтобы посмотреть не просто значение счетчика за весь период наблюдения, но и скорость увеличения данной величины за промежуток времени (возьмем, к примеру 1-минутный интервал, чтобы график был хорошо видим)
+
+В Prometheus есть тип метрик histogram. Данный тип метрик в качестве своего значение отдает ряд распределения измеряемой величины в заданном интервале значений. Мы используем данный тип метрики для измерения времени обработки HTTP запроса нашим приложением.
+
+Рассмотрим пример гистограммы в Prometheus. Посмотрим информацию по времени обработки запроса приходящих на главную страницу приложения. ui_request_latency_seconds_bucket{path="/"}
+
+Эти значения означают, что запросов с временем обработки <= 0.025s было 3 штуки, а запросов 0.01 <= 0.01s было 7 штук (в этот столбец входят 3 запроса из предыдущего столбца и 4 запроса из промежутка [0.025s; 0.01s], такую гистограмму еще называют кумулятивной). Запросов, которые бы заняли > 0.01s на обработку не было, поэтому величина всех последующих столбцов равна 7.
+
+Процентиль:
+- Числовое значение в наборе значений
+- Все числа в наборе меньше процентиля, попадают в границы заданного процента значений от всего числа значений в наборе
+
+Часто для анализа данных мониторинга применяются значения
+90, 95 или 99-й процентиля.
+Мы вычислим 95-й процентиль для выборки времени обработки
+запросов, чтобы посмотреть какое значение является
+максимальной границей для большинства (95%) запросов. Для
+этого воспользуемся встроенной функцией histogram_quantile():
+
+Добавьте третий по счету график на ваш дашборд. В поле
+запроса введите следующее выражение для вычисления 95
+процентиля времени ответа на запрос (gist):
+
+Сохраним изменения дашборда и эспортируем его в JSON файл,
+который загрузим на нашу локальную машину. Положите загруженный файл в созданную ранее директорию
+monitoring/grafana/dashboards под названием
+UI_Service_Monitoring.json
+
+### Сбор метрик бизнеслогики
+
+В качестве примера метрик бизнес логики мы в наше
+приложение мы добавили счетчики количества постов и
+комментариев
+post_count
+comment_count
+Мы построим график скорости роста значения счетчика за
+последний час, используя функцию rate(). Это позволит нам
+получать информацию об активности пользователей приложения.
+
+1. Создайте новый дашборд, назовите его Business_Logic_Monitoring
+и постройте график функции rate(post_count[1h])
+2. Постройте еще один график для счетчика comment,
+экспортируйте дашборд и сохраните в директории
+monitoring/grafana/dashboards под названием
+Business_Logic_Monitoring.json.
+
+Мы определим несколько правил, в которых зададим условия
+состояний наблюдаемых систем, при которых мы должны получать
+оповещения, т.к. заданные условия могут привести к недоступности
+или неправильной работе нашего приложения.
+P.S. Стоит заметить, что в самой Grafana тоже есть alerting. Но по
+функционалу он уступает Alertmanager в Prometheus.
+
+### Alertmanager
+
+Alertmanager - дополнительный компонент для системы
+мониторинга Prometheus, который отвечает за первичную
+обработку алертов и дальнейшую отправку оповещений по
+заданному назначению.
+Создайте новую директорию monitoring/alertmanager. В этой
+директории создайте Dockerfile со следующим содержимым:
+
+```
+FROM prom/alertmanager:v0.14.0
+ADD config.yml /etc/alertmanager/
+```
+
+Настройки Alertmanager-а как и Prometheus задаются через
+YAML файл или опции командой строки. В директории
+monitoring/alertmanager создайте файл config.yml, в котором
+определите отправку нотификаций в ВАШ тестовый слак канал.
+
+Для отправки нотификаций в слак канал потребуется создать
+СВОЙ Incoming Webhook monitoring/alertmanager/config.yml
+
+```
+global:
+  slack_api_url: 'https://hooks.slack.com/services/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'
+
+route:
+  receiver: 'slack-notifications'
+
+receivers:
+- name: 'slack-notifications'
+  slack_configs:
+  - channel: '#pavel_andreev'
+```
+
+1. Соберем образ alertmanager:
+
+```
+monitoring/alertmanager $ docker build -t $USER_NAME/alertmanager .
+```
+
+2. Добавим новый сервис в компоуз файл мониторинга и добавим его в одну сеть с сервисом Prometheus:
+
+```
+  alertmanager:
+    image: ${USER_NAME}/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+    ports:
+      - 9093:9093
+    networks:
+      - reddit
+      - ui
+```
+
+Создадим файл alerts.yml в директории prometheus, в котором
+определим условия при которых должен срабатывать алерт и
+посылаться Alertmanager-у. Мы создадим простой алерт, который
+будет срабатывать в ситуации, когда одна из наблюдаемых систем
+(endpoint) недоступна для сбора метрик (в этом случае метрика up с
+лейблом instance равным имени данного эндпоинта будет равна
+нулю). Выполните запрос по имени метрики up в веб интерфейсе
+Prometheus, чтобы убедиться, что сейчас все эндпоинты доступны
+для сбора метрик.
+
+Добавим операцию копирования данного файла в Dockerfile:
+
+```monitoring/prometheus/Dockerfile
+FROM prom/prometheus:v2.1.0
+ADD prometheus.yml /etc/prometheus/
+ADD alerts.yml /etc/prometheus/
+```
+
+Добавим информацию о правилах, в конфиг Prometheus
+
+```
+global:
+  scrape_interval: '5s'
+...
+  rule_files:
+    - "alerts.yml"
+
+  alerting:
+    alertmanagers:
+      - scheme: http
+        static_configs:
+        - targets:
+          - "alertmanager:9093"
+```
+
+Пересоберем образ Prometheus:
+
+```
+$ docker build -t $USER_NAME/prometheus .
+```
+
+Пересоздадим нашу Docker инфраструктуру мониторинга:
+
+```
+$ docker-compose -f docker-compose-monitoring.yml down
+$ docker-compose -f docker-compose-monitoring.yml up -d
+```
+
+Остановим один из сервисов и подождем одну минуту
+
+```
+$ docker-compose stop post
+```
+
+В канал должно придти сообщение:
+
+[FIRING:q] InstanceDown (post:5000 post)
+
+У Alertmanager также есть свой веб интерфейс, доступный на
+порту 9093, который мы прописали в компоуз файле.
+P.S. Проверить работу вебхуков слака можно обычным curl.
+
+Запушьте собранные вами образы на DockerHub и удалите виртуалку:
 
 ```
 $ docker login
@@ -223,10 +466,6 @@ $ docker push $USER_NAME/ui
 $ docker push $USER_NAME/comment
 $ docker push $USER_NAME/post
 $ docker push $USER_NAME/prometheus
-```
-
-Удалите виртуалку:
-
-```
-$ docker-machine rm docker-host 
+$ docker push $USER_NAME/alertmanager
+$ docker-machine rm docker-host
 ```
