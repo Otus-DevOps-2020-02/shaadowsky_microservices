@@ -7,7 +7,7 @@ services:
     networks:
       - reddit
   ui:
-    image: "${USER_NAME}/ui:$VER_UI"
+    image: "${USER_NAME}/ui:$UI_VERSION"
     environment:
       - POST_SERVICE_HOST=post
       - POST_SERVICE_PORT=5000
