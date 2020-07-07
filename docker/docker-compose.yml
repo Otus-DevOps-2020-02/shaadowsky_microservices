@@ -8,17 +8,39 @@ services:
       - reddit
   ui:
     image: "${USER_NAME}/ui:$VER_UI"
+    environment:
+      - POST_SERVICE_HOST=post
+      - POST_SERVICE_PORT=5000
+      - COMMENT_SERVICE_HOST=comment
+      - COMMENT_SERVICE_PORT=9292
+      - ZIPKIN_ENABLED=${ZIPKIN_ENABLED}
     ports:
       - ${UI_PORT}:${REDDIT_PORT}/tcp
+    depends_on:
+      - post
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+        tag: service.ui
     networks:
       - ui
   post:
-    image: ${USER_NAME}/post:latest
+    image: ${USER_NAME}/post:${POST_VERSION}
+    environment:
+      - POST_DATABASE_HOST=post_db
+      - POST_DATABASE=posts
+      - ZIPKIN_ENABLED=${ZIPKIN_ENABLED}
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+        tag: service.post
     networks:
       - reddit
       - ui
   comment:
-    image: ${USER_NAME}/comment:latest
+    image: ${USER_NAME}/comment:${COMMENT_VERSION}
     networks:
       - reddit
       - ui
