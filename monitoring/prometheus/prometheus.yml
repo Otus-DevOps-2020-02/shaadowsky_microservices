@@ -42,4 +42,3 @@
       static_configs:
         - targets:
           - 'post:5000'
-
