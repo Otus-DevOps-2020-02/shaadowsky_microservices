@@ -19,3 +19,12 @@ https://hub.docker.com/repository/docker/shaadowsky/post
 https://hub.docker.com/repository/docker/shaadowsky/comment
 
 https://hub.docker.com/repository/docker/shaadowsky/ui
+
+## Логирование и распределенная трассировка
+
+- Сбор неструктурированных логов
+- Визуализация логов
+- Сбор структурированных логов
+- Распределенная трасировка
+
+выполнено на EFK (elastic + fluentd + kibana + немного zipkin)
