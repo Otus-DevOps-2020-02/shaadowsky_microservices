@@ -22,6 +22,7 @@ COMMENT_URL ||= "http://#{COMMENT_SERVICE_HOST}:#{COMMENT_SERVICE_PORT}"
 # App version and build info
 VERSION ||= File.read('VERSION').strip
 BUILD_INFO = File.readlines('build_info.txt')
+
 @@host_info=ENV['HOSTNAME']
 @@env_info=ENV['ENV']
 
