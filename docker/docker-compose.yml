@@ -7,7 +7,6 @@ services:
     networks:
       - reddit
   ui:
-
     image: "${USER_NAME}/ui:$UI_VERSION"
     environment:
       - POST_SERVICE_HOST=post
@@ -37,14 +36,11 @@ services:
       options:
         fluentd-address: localhost:24224
         tag: service.post
-
     networks:
       - reddit
       - ui
   comment:
-
     image: ${USER_NAME}/comment:${COMMENT_VERSION}
-
     networks:
       - reddit
       - ui

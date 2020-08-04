@@ -28,3 +28,8 @@ https://hub.docker.com/repository/docker/shaadowsky/ui
 - Распределенная трасировка
 
 выполнено на EFK (elastic + fluentd + kibana + немного zipkin)
+
+## Kubernetes intro
+
+- разобрать на практике все компоненты kubernetes, оахвернуть их вручную используя hard way
+- ознакомиться с описанием основных примитивов нашего приложения и его дальнейшим запуском в kubernetes
