@@ -1,0 +1,20 @@
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ui
+  annotations:
+    lubernetes.io/ingress.allow-http: "false"
+spec:
+  tls:
+  - secretName: ui-ingress
+  backend:
+    serviceName: ui
+    servicePort: 9292
+  rules:
+  - http:
+      paths:
+      - path: /*
+        backend:
+          serviceName: ui
+          servicePort: 9292
