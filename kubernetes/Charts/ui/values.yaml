@@ -6,3 +6,7 @@ image:
   repository: shaadowsky/ui
   tag: latest
 
+postHost:
+postPort:
+commentHost:
+commentPort:
