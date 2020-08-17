@@ -3,7 +3,7 @@ service:
   externalPort: 9292
 
 image:
-  repository: shaadowsky/ui
+  repository: shaadowsky/comment
   tag: latest
 
 databaseHost:

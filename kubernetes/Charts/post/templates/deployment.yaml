@@ -20,10 +20,10 @@ spec:
       labels:
         app: reddit
         component: post
-        release: {{ . Release.Name }}
+        release: {{ .Release.Name }}
     spec:
       containers:
-      - image: "{{ .Values.image.repository }}:{{ .Values.image"tag }}"
+      - image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         name: post
         ports:
         - containerPort: {{ .Values.service.internalPort }}

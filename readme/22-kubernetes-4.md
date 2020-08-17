@@ -1,0 +1,3 @@
+- Работа с Helm
+- Развертывание Gitlab в Kubernetes
+- Запуск CI/CD конвейера в Kubernetes
