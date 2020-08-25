@@ -39,3 +39,4 @@ https://hub.docker.com/repository/docker/shaadowsky/ui
 - Развернуть локальное окружение для работы с Kubernetes
 - Развернуть Kubernetes в GKE
 - Запустить reddit в Kubernetes
+
