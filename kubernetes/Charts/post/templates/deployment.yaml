@@ -20,10 +20,17 @@ spec:
       labels:
         app: reddit
         component: post
+<<<<<<< HEAD
         release: {{ . Release.Name }}
     spec:
       containers:
       - image: "{{ .Values.image.repository }}:{{ .Values.image"tag }}"
+=======
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+      - image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+>>>>>>> kubernetes-5
         name: post
         ports:
         - containerPort: {{ .Values.service.internalPort }}

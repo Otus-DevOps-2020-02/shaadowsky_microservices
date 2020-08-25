@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 name: ui
+=======
+name: comment
+>>>>>>> kubernetes-5
 version: 1.0.0
 description: OTUS reddit application UI
 maintainers:

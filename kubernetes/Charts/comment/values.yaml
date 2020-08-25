@@ -3,7 +3,11 @@ service:
   externalPort: 9292
 
 image:
+<<<<<<< HEAD
   repository: shaadowsky/ui
+=======
+  repository: shaadowsky/comment
+>>>>>>> kubernetes-5
   tag: latest
 
 databaseHost:
