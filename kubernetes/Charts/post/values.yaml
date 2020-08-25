@@ -1,0 +1,9 @@
+service:
+  internalPort: 5000
+  externalPort: 5000
+
+image:
+  repository: shaadowsky/post
+  tag: latest
+
+databaseHost:

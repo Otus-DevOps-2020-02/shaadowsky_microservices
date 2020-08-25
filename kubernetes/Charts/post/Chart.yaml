@@ -1,0 +1,7 @@
+name: post
+version: 1.0.0
+description: OTUS reddit application POST
+maintainers:
+  - name: The Mighty Shrimp
+    email: some@mail.com
+appVersion: 1.0
